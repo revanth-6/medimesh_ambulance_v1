@@ -15,6 +15,9 @@ maintainers:
 home: https://github.com/bharath44623/MediMesh
 
 dependencies:
+  - name: mongo
+    version: 1.0.0
+    repository: "file://charts/mongo"
   - name: ambulance
     version: 1.0.0
     repository: "file://charts/ambulance"

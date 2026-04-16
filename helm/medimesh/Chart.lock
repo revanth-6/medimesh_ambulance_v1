@@ -1,6 +1,9 @@
 dependencies:
+- name: mongo
+  repository: file://charts/mongo
+  version: 1.0.0
 - name: ambulance
   repository: file://charts/ambulance
   version: 1.0.0
-digest: sha256:6e1d0b7d7fcb52cfff269a357c0a5b0923236b2409d78cad80edb1be3c8bdf27
-generated: "2026-04-03T10:50:41.628641096Z"
+digest: sha256:86ffc7892972bb8fe9c0b994ac81ed6e50eea9add6a89d8844bb2e3cd59e6c94
+generated: "2026-04-16T18:00:16.83980987Z"

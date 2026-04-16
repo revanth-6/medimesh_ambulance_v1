@@ -1,0 +1,48 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Values.mongo.rsInitJob.name }}
+  namespace: {{ .Values.global.namespaces.db }}
+spec:
+  backoffLimit: {{ .Values.mongo.rsInitJob.backoffLimit }}
+  activeDeadlineSeconds: {{ .Values.mongo.rsInitJob.activeDeadlineSeconds }}
+  template:
+    spec:
+      serviceAccountName: default
+      restartPolicy: Never
+      containers:
+      - name: rs-init
+        image: "{{ .Values.mongo.image.repository }}:{{ .Values.mongo.image.tag }}"
+        imagePullPolicy: {{ .Values.mongo.image.pullPolicy }}
+        command:
+          - /bin/sh
+          - -c
+          - |
+            # Wait for all MongoDB pods to be ready
+            for i in 0 1 2; do
+              until mongosh --host medimesh-mongodb-$i.medimesh-mongodb.medimesh-db.svc.cluster.local:27017 --eval "db.adminCommand('ping')" > /dev/null 2>&1; do
+                echo "Waiting for mongod-$i..."
+                sleep 2
+              done
+            done
+            
+            # Initialize replica set
+            mongosh --host medimesh-mongodb-0.medimesh-mongodb.medimesh-db.svc.cluster.local:27017 << MONGO_INIT
+            rs.initiate({
+              _id: "{{ .Values.mongo.replicaSetName }}",
+              members: [
+                {_id: 0, host: "medimesh-mongodb-0.medimesh-mongodb.medimesh-db.svc.cluster.local:27017"},
+                {_id: 1, host: "medimesh-mongodb-1.medimesh-mongodb.medimesh-db.svc.cluster.local:27017"},
+                {_id: 2, host: "medimesh-mongodb-2.medimesh-mongodb.medimesh-db.svc.cluster.local:27017"}
+              ]
+            })
+            MONGO_INIT
+            
+            echo "Replica set initialized successfully"
+        resources:
+          requests:
+            cpu: {{ .Values.mongo.rsInitJob.resources.requests.cpu }}
+            memory: {{ .Values.mongo.rsInitJob.resources.requests.memory }}
+          limits:
+            cpu: {{ .Values.mongo.rsInitJob.resources.limits.cpu }}
+            memory: {{ .Values.mongo.rsInitJob.resources.limits.memory }}

@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Values.mongo.name }}
+  namespace: {{ .Values.global.namespaces.db }}
+  labels:
+    app: {{ .Values.mongo.name }}
+spec:
+  serviceName: {{ .Values.mongo.service.name }}
+  replicas: {{ .Values.mongo.replicas }}
+  selector:
+    matchLabels:
+      app: {{ .Values.mongo.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.mongo.name }}
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: mongodb
+        image: "{{ .Values.mongo.image.repository }}:{{ .Values.mongo.image.tag }}"
+        imagePullPolicy: {{ .Values.mongo.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.mongo.containerPort }}
+          name: mongodb
+        command:
+          - mongod
+          - "--replSet"
+          - "{{ .Values.mongo.replicaSetName }}"
+          - "--bind_ip_all"
+        resources:
+          requests:
+            cpu: {{ .Values.mongo.resources.requests.cpu }}
+            memory: {{ .Values.mongo.resources.requests.memory }}
+          limits:
+            cpu: {{ .Values.mongo.resources.limits.cpu }}
+            memory: {{ .Values.mongo.resources.limits.memory }}
+        volumeMounts:
+        - name: mongodb-storage
+          mountPath: /data/db
+      tolerations:
+        {{- toYaml .Values.mongo.tolerations | nindent 8 }}
+  volumeClaimTemplates:
+  - metadata:
+      name: mongodb-storage
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: standard
+      resources:
+        requests:
+          storage: {{ .Values.mongo.storage.size }}
