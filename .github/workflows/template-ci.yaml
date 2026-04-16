@@ -302,14 +302,65 @@ jobs:
              Author : ${{ github.actor }}
 
              Workflow Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-
-
+  # Update Helm values with new image tag
+  update-helm-values:
+    name: "⑦ Update Helm Values"
+    runs-on: ubuntu-latest
+    needs: docker
+    if: github.event_name != 'pull_request'
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+  
+      - name: Update Helm values.yaml with new image tag
+        run: |
+          NEW_IMAGE_TAG="${{ needs.docker.outputs.version }}"
+          HELM_VALUES_FILE="helm/medimesh/values.yaml"
+          
+          # Update the global image tag
+          sed -i "s/imageTag: .*/imageTag: \"${NEW_IMAGE_TAG}\"/" "$HELM_VALUES_FILE"
+          
+          # Update ambulance-specific tag
+          sed -i "s|bharath44623/medimesh_medimesh-ambulance.*|bharath44623/medimesh_medimesh-ambulance|g" "$HELM_VALUES_FILE"
+          sed -i "/repository: bharath44623\/medimesh_medimesh-ambulance/a\\    tag: \"${NEW_IMAGE_TAG}\"" "$HELM_VALUES_FILE"
+          
+          echo "✅ Updated Helm values with tag: ${NEW_IMAGE_TAG}"
+          cat "$HELM_VALUES_FILE" | grep -A 2 "imageTag:"
+  
+      - name: Commit and push changes to Git
+        run: |
+          git config --local user.email "github-action@medimesh.local"
+          git config --local user.name "MediMesh CI Bot"
+          git add helm/medimesh/values.yaml
+          git commit -m "chore(helm): update image tag to ${{ needs.docker.outputs.version }} [skip ci]" || echo "No changes to commit"
+          git push origin main || true
+  
+      - name: Send Email on Failure
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: "❌ MediMesh CD Failed — Helm Update (${{ inputs.service_name }})"
+          to: ${{ secrets.ALERT_EMAIL }}
+          from: MediMesh CI/CD Pipeline
+          body: |
+            Helm values update FAILED for: ${{ inputs.service_name }}
+            
+            Version : ${{ needs.docker.outputs.version }}
+            Commit  : ${{ github.sha }}
+            Workflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+  
   # Success Notification
   
   notify-success:
     name: " Success — ${{ inputs.service_name }}"
     runs-on: ubuntu-latest
-    needs: [sonarqube, build, snyk, docker]
+    needs: [sonarqube, build, snyk, docker, update-helm-values]
     if: success() && github.event_name != 'pull_request'
     steps:
       - name: Send Success Email
