@@ -1,0 +1,20 @@
+apiVersion: v2
+name: medimesh
+description: MediMesh — Umbrella Helm Chart for Hospital Management Microservices
+type: application
+version: 2.0.0
+appVersion: "v2.0.0"
+keywords:
+  - medimesh
+  - hospital
+  - microservices
+  - kubernetes
+  - helm-umbrella
+maintainers:
+  - name: Bharath
+home: https://github.com/bharath44623/MediMesh
+
+dependencies:
+  - name: ambulance
+    version: 1.0.0
+    repository: "file://charts/ambulance"
