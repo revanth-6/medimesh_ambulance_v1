@@ -1,0 +1,125 @@
+# ═══════════════════════════════════════════════════════════
+# MediMesh — Global Values (Single Source of Truth)
+# ═══════════════════════════════════════════════════════════
+
+global:
+  imageRegistry: bharath44623
+  imageTag: "v1.1.0"
+  imagePullPolicy: Always
+  environment: production
+
+  # Namespace isolation
+  namespaces:
+    frontend: medimesh-frontend
+    backend: medimesh-backend
+    db: medimesh-db
+
+  # NFS storage config
+  storage:
+    nfs:
+      server: "172.31.26.181"
+      path: "/srv/nfs/medimesh"
+      storageClass: nfs-dynamic-medimesh
+
+  # MongoDB connection (used by all backend services)
+  mongo:
+    host: "medimesh-mongodb"
+    port: 27017
+    replicaSet: rs0
+    replicas: 3
+
+  # Shared secrets (base64 encoded)
+  secrets:
+    jwtSecret: "bWVkaW1lc2gtand0LXNlY3JldC0yMDI0"
+    adminUsername: "YWRtaW4="
+    adminPassword: "cGFzc3dvcmQxMjM="
+    mongoRootUsername: "bWVkaW1lc2hBZG1pbg=="
+    mongoRootPassword: "bWVkaW1lc2hQYXNzMjAyNA=="
+
+# ─── Ambulance Service ───────────────────────────────────
+ambulance:
+  name: medimesh-ambulance
+  replicas: 2
+  image:
+    repository: bharath44623/medimesh_medimesh-ambulance
+    tag: "v1.1.0"
+  containerPort: 5007
+  dbName: medimesh-ambulance-db
+  service:
+    name: medimesh-ambulance-svc
+    port: 5007
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+  extraEnv: []
+
+  # ─── MongoDB ─────────────────────────────────────────────
+mongo:
+  name: medimesh-mongodb
+  replicas: 3
+  image:
+    repository: mongo
+    tag: "7"
+    pullPolicy: IfNotPresent
+  containerPort: 27017
+  replicaSetName: rs0
+  service:
+    name: medimesh-mongodb
+    port: 27017
+    targetPort: 27017
+  storage:
+    size: 5Gi
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+  tolerations:
+    - key: node-role.kubernetes.io/control-plane
+      operator: Exists
+      effect: NoSchedule
+    - key: node-role.kubernetes.io/master
+      operator: Exists
+      effect: NoSchedule
+  rsInitJob:
+    name: mongodb-rs-init
+    backoffLimit: 5
+    activeDeadlineSeconds: 300
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "128Mi"
+      limits:
+        cpu: "200m"
+        memory: "256Mi"
+
+# ─── NFS Provisioner ─────────────────────────────────────
+nfs:
+  enabled: true
+  provisioner:
+    name: nfs-client-provisioner
+    image:
+      repository: registry.k8s.io/sig-storage/nfs-subdir-external-provisioner
+      tag: "v4.0.2"
+      pullPolicy: IfNotPresent
+    provisionerName: medimesh/nfs-subdir-external-provisioner
+    resources:
+      requests:
+        cpu: "50m"
+        memory: "64Mi"
+      limits:
+        cpu: "100m"
+        memory: "128Mi"
+  storageClass:
+    isDefault: false
+    onDelete: retain
+    reclaimPolicy: Retain
+    volumeBindingMode: Immediate
+    allowVolumeExpansion: true
+    pathPattern: "${.PVC.namespace}-${.PVC.name}"
