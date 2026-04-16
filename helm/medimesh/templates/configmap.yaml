@@ -1,0 +1,14 @@
+# Shared ConfigMap — cross-namespace service URLs
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: medimesh-config
+  namespace: {{ .Values.global.namespaces.backend }}
+  labels:
+    {{- include "medimesh.labels" . | nindent 4 }}
+data:
+  NODE_ENV: {{ .Values.global.environment | quote }}
+  MONGO_HOST: {{ .Values.global.mongo.host | quote }}
+  MONGO_PORT: {{ .Values.global.mongo.port | quote }}
+  {{- $ns := .Values.global.namespaces.backend }}
+  AMBULANCE_SERVICE_URL: "http://medimesh-ambulance-svc.{{ $ns }}.svc.cluster.local:5007"
