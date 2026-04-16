@@ -39,8 +39,10 @@ spec:
         volumeMounts:
         - name: mongodb-storage
           mountPath: /data/db
+      {{- if .Values.mongo.tolerations }}
       tolerations:
         {{- toYaml .Values.mongo.tolerations | nindent 8 }}
+      {{- end }}
   volumeClaimTemplates:
   - metadata:
       name: mongodb-storage
