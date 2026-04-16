@@ -1,0 +1,37 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: medimesh-ambulance
+  namespace: argocd
+spec:
+  project: default
+  
+  # Source: Your Git repository
+  source:
+    repoURL: https://github.com/revanth-6/medimesh_ambulance_v1.git
+    targetRevision: main
+    path: helm/medimesh
+    helm:
+      releaseName: medimesh
+      values: |
+        global:
+          imageTag: "v1.1.0"  # Will be updated by CI/CD
+  
+  # Destination: Your Kubernetes cluster
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  
+  # Sync Policy: GitOps automation
+  syncPolicy:
+    automated:
+      prune: true      # Delete resources removed from Git
+      selfHeal: true   # Auto-sync if cluster drifts
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
